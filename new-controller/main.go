@@ -3,7 +3,6 @@ package main
 
 import (
 	"flag"
-	"net/http"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -38,9 +37,6 @@ func main() {
 		BindAddress: metricsAddr,
 	}
 
-	// Add health check handlers
-	healthzHandler := &healthz.Handler{}
-	readinessHandler := &healthz.Handler{}
 
 	mgr, err := manager.New(config.GetConfigOrDie(), manager.Options{
 		Scheme:           scheme,

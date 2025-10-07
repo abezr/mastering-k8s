@@ -9,18 +9,34 @@ metadata:
     app.kubernetes.io/part-of: newresource-operator
 rules:
 - apiGroups:
-  - "example.com"
+  - "apps.newresource.com"
   resources:
   - "newresources"
   verbs:
   - "get"
   - "list"
   - "watch"
+  - "create"
+  - "update"
+  - "patch"
+  - "delete"
 - apiGroups:
-  - "example.com"
+  - "apps.newresource.com"
   resources:
   - "newresources/status"
   verbs:
   - "get"
   - "update"
   - "patch"
+- apiGroups:
+  - "coordination.k8s.io"
+  resources:
+  - "leases"
+  verbs:
+  - "get"
+  - "list"
+  - "watch"
+  - "create"
+  - "update"
+  - "patch"
+  - "delete"

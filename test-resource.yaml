@@ -1,0 +1,7 @@
+apiVersion: apps.newresource.com/v1alpha1
+kind: NewResource
+metadata:
+  name: test-resource
+  namespace: newresource-system
+spec:
+  foo: "test-value"

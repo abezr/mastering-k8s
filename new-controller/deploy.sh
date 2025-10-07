@@ -113,7 +113,7 @@ wait_for_deployment() {
     print_info "Waiting for controller deployment to be ready..."
 
     while [ $count -lt $timeout ]; do
-        if kubectl rollout status deployment/controller -n controller-system --timeout=10s &> /dev/null; then
+        if kubectl rollout status deployment/newresource-controller -n newresource-system --timeout=10s &> /dev/null; then
             print_success "Controller deployment is ready"
             return 0
         fi
@@ -138,7 +138,7 @@ show_status() {
 
     echo ""
     echo "Controller Resources:"
-    kubectl get all -n controller-system 2>/dev/null || echo "  No controller resources found"
+    kubectl get all -n newresource-system 2>/dev/null || echo "  No controller resources found"
 
     echo ""
     echo "Custom Resources:"
