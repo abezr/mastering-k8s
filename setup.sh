@@ -3,6 +3,44 @@
 # Exit on error
 set -e
 
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Function to print colored output
+print_info() {
+    echo -e "${BLUE}[INFO]${NC} $1"
+}
+
+print_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $1"
+}
+
+print_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $1"
+}
+
+print_error() {
+    echo -e "${RED}[ERROR]${NC} $1"
+}
+
+# Detect environment
+detect_environment() {
+    if [[ -n "$CODESPACES" ]] || [[ -n "$GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN" ]]; then
+        echo "codespaces"
+    elif [[ -f /.dockerenv ]]; then
+        echo "docker"
+    else
+        echo "local"
+    fi
+}
+
+ENVIRONMENT=$(detect_environment)
+print_info "Detected environment: $ENVIRONMENT"
+
 echo "Setting up Kubernetes control plane for AMD64..."
 
 # Function to check if a process is running
@@ -363,6 +401,69 @@ cleanup() {
     echo "Cleanup complete"
 }
 
+# Function to setup Kind cluster for testing
+setup_kind() {
+    print_info "Setting up Kind cluster for testing..."
+
+    # Download Kind if not present
+    if ! command -v kind &> /dev/null; then
+        print_info "Downloading Kind..."
+        curl -Lo kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
+        chmod +x kind
+        export PATH="$PWD:$PATH"
+    fi
+
+    # Create Kind cluster
+    print_info "Creating Kind cluster..."
+    ./kind create cluster --name codespaces-test-cluster
+
+    print_success "Kind cluster created successfully"
+}
+
+# Function to test deployment
+test_deployment() {
+    print_info "Testing controller deployment..."
+
+    # Check if controller pod is running
+    if kubectl get pods -n newresource-system -l app.kubernetes.io/name=newresource-controller &> /dev/null; then
+        print_success "Controller pod is running"
+
+        # Check CRDs
+        if kubectl get crd newresources.apps.newresource.com &> /dev/null; then
+            print_success "CRDs are installed"
+
+            # Check custom resources
+            if kubectl get newresources -n newresource-system &> /dev/null; then
+                print_success "Custom resources are available"
+                kubectl get newresources -n newresource-system
+            else
+                print_warning "No custom resources found"
+            fi
+        else
+            print_warning "CRDs not found"
+        fi
+    else
+        print_warning "Controller pod not found"
+    fi
+
+    # Show deployment status
+    print_info "Deployment status:"
+    kubectl get all -n newresource-system 2>/dev/null || print_warning "No resources in newresource-system namespace"
+}
+
+# Function to verify Codespaces environment
+verify_codespaces() {
+    print_info "Verifying GitHub Codespaces environment..."
+
+    if [[ -n "$CODESPACES" ]]; then
+        print_success "Running in GitHub Codespaces"
+        print_info "Container: $(hostname)"
+        print_info "Workspace: $(pwd)"
+    else
+        print_warning "Not running in GitHub Codespaces"
+    fi
+}
+
 case "${1:-}" in
     start)
         start
@@ -373,8 +474,41 @@ case "${1:-}" in
     cleanup)
         cleanup
         ;;
+    kind)
+        setup_kind
+        ;;
+    test)
+        test_deployment
+        ;;
+    verify)
+        verify_codespaces
+        ;;
+    deploy)
+        setup_kind
+        print_info "Deploying controller..."
+        cd new-controller && ./deploy.sh deploy
+        test_deployment
+        ;;
+    full-test)
+        verify_codespaces
+        setup_kind
+        print_info "Running full deployment test..."
+        cd new-controller && ./deploy.sh deploy
+        test_deployment
+        print_success "Full test completed!"
+        ;;
     *)
-        echo "Usage: $0 {start|stop|cleanup}"
+        echo "Usage: $0 {start|stop|cleanup|kind|test|verify|deploy|full-test}"
+        echo ""
+        echo "Commands:"
+        echo "  start      Start local Kubernetes cluster"
+        echo "  stop       Stop local Kubernetes cluster"
+        echo "  cleanup    Clean up all components"
+        echo "  kind       Setup Kind cluster for testing"
+        echo "  test       Test controller deployment"
+        echo "  verify     Verify Codespaces environment"
+        echo "  deploy     Setup Kind + deploy controller + test"
+        echo "  full-test  Verify + deploy + test (complete workflow)"
         exit 1
         ;;
-esac 
+esac
