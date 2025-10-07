@@ -3,17 +3,19 @@ package main
 
 import (
 	"flag"
+	"net/http"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	newv1 "github.com/mastering-k8s/new-controller/api/v1alpha1"
-	"github.com/mastering-k8s/new-controller/controllers"
+	newv1 "github.com/your-username/new-controller/api/v1alpha1"
+	"github.com/your-username/new-controller/controllers"
 )
 
 func main() {
@@ -31,11 +33,23 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseDevMode(true)))
 
+	// Configure metrics server with proper options and middleware
+	metricsServerOptions := server.Options{
+		BindAddress: metricsAddr,
+	}
+
+	// Add health check handlers
+	healthzHandler := &healthz.Handler{}
+	readinessHandler := &healthz.Handler{}
+
 	mgr, err := manager.New(config.GetConfigOrDie(), manager.Options{
 		Scheme:           scheme,
-		Metrics:          server.Options{BindAddress: metricsAddr},
+		Metrics:          metricsServerOptions,
 		LeaderElection:   enableLeaderElection,
 		LeaderElectionID: "newresource-controller",
+		HealthProbeBindAddress: ":8081",
+		ReadinessEndpointName:  "/readyz",
+		LivenessEndpointName:   "/healthz",
 	})
 	if err != nil {
 		panic(err)
@@ -44,6 +58,14 @@ func main() {
 	if err := (&controllers.NewResourceReconciler{
 		Client: mgr.GetClient(),
 	}).SetupWithManager(mgr); err != nil {
+		panic(err)
+	}
+
+	// Add health checks
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		panic(err)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		panic(err)
 	}
 

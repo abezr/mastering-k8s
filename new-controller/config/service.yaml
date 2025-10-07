@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: newresource-controller-metrics
+  namespace: newresource-system
+  labels:
+    app.kubernetes.io/name: newresource-controller
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/part-of: newresource-operator
+spec:
+  type: ClusterIP
+  ports:
+  - name: metrics
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: newresource-controller
+    app.kubernetes.io/component: controller

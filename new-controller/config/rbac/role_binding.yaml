@@ -1,0 +1,17 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: newresource-controller
+  namespace: newresource-system
+  labels:
+    app.kubernetes.io/name: newresource-controller
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/part-of: newresource-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: newresource-controller
+subjects:
+- kind: ServiceAccount
+  name: newresource-controller
+  namespace: newresource-system
