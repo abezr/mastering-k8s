@@ -1,0 +1,103 @@
+name: E2E Kind
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    name: End-to-End on Kind
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+          check-latest: true
+
+      - name: Create Kind cluster
+        uses: helm/kind-action@v1.10.0
+        with:
+          cluster_name: e2e
+          node_image: kindest/node:v1.29.4
+          kubectl_version: v1.29.4
+
+      - name: Build controller image
+        run: |
+          docker build -t newresource-controller:latest .
+
+      - name: Load image into Kind
+        run: |
+          kind load docker-image newresource-controller:latest --name e2e
+
+      - name: Create namespace
+        run: |
+          kubectl create namespace newresource-system || true
+
+      - name: Apply CRDs
+        run: |
+          kubectl apply -f config/crd/bases/
+
+      - name: Apply RBAC
+        run: |
+          kubectl apply -f config/rbac/
+
+      - name: Deploy controller and service
+        run: |
+          kubectl apply -f config/deployment.yaml
+          kubectl apply -f config/service.yaml
+
+      - name: Wait for controller rollout
+        run: |
+          kubectl rollout status deployment/newresource-controller -n newresource-system --timeout=300s
+          kubectl get pods -n newresource-system -o wide
+
+      - name: Apply sample NewResource
+        run: |
+          cat <<EOF | kubectl apply -f -
+          apiVersion: apps.newresource.com/v1alpha1
+          kind: NewResource
+          metadata:
+            name: e2e-sample
+            namespace: default
+          spec:
+            foo: "hello from e2e"
+          EOF
+          kubectl get newresources -A
+
+      - name: Assert status.ready becomes true
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Polling status.ready for NewResource default/e2e-sample"
+          for i in {1..60}; do
+            READY=$(kubectl get newresource e2e-sample -n default -o jsonpath='{.status.ready}' 2>/dev/null || true)
+            if [[ "${READY}" == "true" ]]; then
+              echo "NewResource is ready"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Timed out waiting for status.ready=true"
+          exit 1
+
+      - name: Dump diagnostics on failure
+        if: failure()
+        run: |
+          echo "=== Pods in newresource-system ==="
+          kubectl get pods -n newresource-system -o wide || true
+          echo "=== Describe deployment ==="
+          kubectl describe deployment/newresource-controller -n newresource-system || true
+          echo "=== Controller logs ==="
+          kubectl logs -l app.kubernetes.io/name=newresource-controller -n newresource-system --tail=200 || true
+          echo "=== CRD and CR state ==="
+          kubectl get crd | grep newresource || true
+          kubectl get newresource e2e-sample -n default -o yaml || true

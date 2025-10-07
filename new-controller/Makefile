@@ -189,15 +189,15 @@ status: ## Show deployment status.
 
 .PHONY: wait-ready
 wait-ready: ## Wait for controller deployment to be ready.
-	@kubectl rollout status deployment/controller -n controller-system --timeout=300s || exit 1
+	@kubectl rollout status deployment/newresource-controller -n newresource-system --timeout=300s || exit 1
 
 .PHONY: logs
 logs: ## Show controller logs.
-	kubectl logs -f deployment/controller -n controller-system
+	kubectl logs -f deployment/newresource-controller -n newresource-system
 
 .PHONY: restart
 restart: ## Restart the controller deployment.
-	kubectl rollout restart deployment/controller -n controller-system
+	kubectl rollout restart deployment/newresource-controller -n newresource-system
 
 ##@ Tools
 

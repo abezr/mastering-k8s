@@ -35,7 +35,7 @@ kind create cluster --name controller-test
 
 # 4. Test with a custom resource
 kubectl apply -f - <<EOF
-apiVersion: example.com/v1alpha1
+apiVersion: apps.newresource.com/v1alpha1
 kind: NewResource
 metadata:
   name: test-resource
@@ -297,7 +297,7 @@ kubectl apply -f config/service.yaml
 
 # 4. Verify deployment
 kubectl get pods -n controller-system
-kubectl get crd | grep example.com
+kubectl get crd | grep apps.newresource.com
 ```
 
 ## Testing and Validation
@@ -309,7 +309,7 @@ kubectl get crd | grep example.com
 kubectl get all -n controller-system
 
 # Check CRDs
-kubectl get crd | grep example.com
+kubectl get crd | grep apps.newresource.com
 
 # Check controller logs
 kubectl logs -f deployment/controller -n controller-system
@@ -323,7 +323,7 @@ kubectl rollout status deployment/controller -n controller-system
 1. **Create a test resource:**
    ```bash
    kubectl apply -f - <<EOF
-   apiVersion: example.com/v1alpha1
+   apiVersion: apps.newresource.com/v1alpha1
    kind: NewResource
    metadata:
      name: test-resource
@@ -351,7 +351,7 @@ For testing controller performance:
 # Create multiple resources
 for i in {1..10}; do
   cat <<EOF | kubectl apply -f -
-  apiVersion: example.com/v1alpha1
+  apiVersion: apps.newresource.com/v1alpha1
   kind: NewResource
   metadata:
     name: test-resource-$i
@@ -411,7 +411,7 @@ error: unable to recognize "": no matches for kind "NewResource"
 ```
 
 **Solutions:**
-- Check CRDs: `kubectl get crd | grep example.com`
+- Check CRDs: `kubectl get crd | grep apps.newresource.com`
 - Reinstall CRDs: `make install-crds`
 
 #### 5. Controller Not Starting

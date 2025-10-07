@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+permissions:
+  contents: read
+
+jobs:
+  lint-build-test:
+    name: Lint, Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+          check-latest: true
+
+      - name: Go env
+        run: |
+          go env
+          go version
+
+      - name: Validate go.mod is tidy
+        run: |
+          go mod tidy
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "go.mod or go.sum changed after 'go mod tidy'. Please run 'go mod tidy' locally."
+            git --no-pager diff
+            exit 1
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Format check
+        run: |
+          fmt_out="$(gofmt -s -l .)"
+          if [[ -n "${fmt_out}" ]]; then
+            echo "Go files not formatted:"
+            echo "${fmt_out}"
+            exit 1
+          fi
+
+      - name: Install golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+
+      - name: Lint
+        run: golangci-lint run
+
+      - name: Install setup-envtest
+        run: |
+          go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+          echo "KUBEBUILDER_ASSETS=$($(go env GOPATH)/bin/setup-envtest use -p path 1.29.x)" >> $GITHUB_ENV
+
+      - name: Run unit tests with coverage
+        env:
+          KUBEBUILDER_ASSETS: ${{ env.KUBEBUILDER_ASSETS }}
+        run: |
+          go test ./... -count=1 -race -coverprofile=cover.out -covermode=atomic
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: cover.out
+          if-no-files-found: warn

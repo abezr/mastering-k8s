@@ -3,9 +3,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.19.0
-  name: newresources.example.com
+  name: newresources.apps.newresource.com
 spec:
-  group: example.com
+  group: apps.newresource.com
   names:
     kind: NewResource
     listKind: NewResourceList
