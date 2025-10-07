@@ -1,4 +1,4 @@
-module github.com/your-username/new-controller
+module github.com/abezr/mastering-k8s/new-controller
 
 go 1.21
 

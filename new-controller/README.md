@@ -1,5 +1,9 @@
 # New Controller
 
+[![CI](https://github.com/abezr/mastering-k8s/workflows/CI/badge.svg)](https://github.com/abezr/mastering-k8s/actions)
+[![Go Version](https://img.shields.io/badge/go-1.21-blue.svg)](https://golang.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 A simple Kubernetes controller example built with [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime). This project demonstrates how to create a custom controller that manages a custom resource type.
 
 ## Overview
@@ -308,6 +312,56 @@ To extend this controller for your own use case:
 2. Update the `Reconcile` method in `controllers/resource_controller.go` to implement your business logic
 3. Regenerate CRDs if you changed the API types
 4. Add any additional dependencies to `go.mod`
+
+## CI/CD
+
+This project includes comprehensive CI/CD pipelines:
+
+### Automated Workflows
+
+- **CI Pipeline** (`.github/workflows/ci.yml`): Runs on every push and PR
+  - Go module validation and dependency checks
+  - Code formatting and linting (golangci-lint)
+  - Unit tests with coverage reporting
+  - Uploads coverage artifacts for analysis
+
+- **Container Publishing** (`.github/workflows/docker-publish.yml`): Triggers on main push and tags
+  - Multi-architecture builds (linux/amd64, linux/arm64)
+  - Publishes to GitHub Container Registry (GHCR)
+  - Automatic tagging with semantic versions
+
+- **End-to-End Testing** (`.github/workflows/e2e-kind.yml`): Validates full deployment
+  - Creates Kind cluster with controller image
+  - Deploys CRDs, RBAC, and controller
+  - Tests sample resource reconciliation
+  - Comprehensive failure diagnostics
+
+### Dependency Management
+
+- **Dependabot** (`.github/dependabot.yml`): Weekly dependency updates
+  - Go modules (gomod)
+  - GitHub Actions
+  - Automatic PR creation for updates
+
+### Running CI Locally
+
+```bash
+# Run the same checks as CI
+make test
+make lint
+
+# Build container image
+make docker-build
+
+# Run E2E tests locally with Kind
+make docker-build
+kind create cluster --name test
+kind load docker-image newresource-controller:latest --name test
+kubectl apply -f config/crd/bases/
+kubectl apply -f config/rbac/
+kubectl apply -f config/deployment.yaml
+kubectl apply -f config/service.yaml
+```
 
 ## License
 

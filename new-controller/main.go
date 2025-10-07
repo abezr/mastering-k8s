@@ -14,8 +14,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	newv1 "github.com/your-username/new-controller/api/v1alpha1"
-	"github.com/your-username/new-controller/controllers"
+	newv1 "github.com/abezr/mastering-k8s/new-controller/api/v1alpha1"
+	"github.com/abezr/mastering-k8s/new-controller/controllers"
 )
 
 func main() {

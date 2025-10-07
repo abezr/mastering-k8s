@@ -5,7 +5,7 @@ import (
 	"context"
 	"time"
 
-	newv1 "github.com/your-username/new-controller/api/v1alpha1"
+	newv1 "github.com/abezr/mastering-k8s/new-controller/api/v1alpha1"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -17,7 +17,7 @@ import (
 
 var (
 	// Metrics definitions
-	reconcileTotalCounter = promauto.NewCounterVec(
+	reconcileTotalCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "controller_reconcile_total",
 			Help: "Total number of reconciliation attempts",
@@ -25,7 +25,7 @@ var (
 		[]string{"controller", "result"},
 	)
 
-	reconcileDurationHistogram = promauto.NewHistogramVec(
+	reconcileDurationHistogram = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:    "controller_reconcile_duration_seconds",
 			Help:    "Time spent reconciling resources",
@@ -34,7 +34,7 @@ var (
 		[]string{"controller"},
 	)
 
-	reconcileErrorsCounter = promauto.NewCounterVec(
+	reconcileErrorsCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "controller_reconcile_errors_total",
 			Help: "Total number of reconciliation errors",
