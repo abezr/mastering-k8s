@@ -1,4 +1,157 @@
-# New Controller
+# NewResource Controller
+
+A Kubernetes controller for managing NewResource custom resources.
+
+## Overview
+
+This controller demonstrates how to build a Kubernetes controller using the [controller-runtime](https://github.com/kubernetes-sigs/controller-runtime) library. It watches for NewResource custom resources and updates their status to indicate they are ready.
+
+## Prerequisites
+
+- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation) (for local testing)
+- [Docker](https://docs.docker.com/get-docker/)
+
+## Quick Start
+
+### 1. Create a Kind Cluster
+
+```bash
+kind create cluster
+```
+
+### 2. Build and Load the Controller Image
+
+```bash
+./build-and-load.sh
+```
+
+### 3. Deploy the Controller
+
+```bash
+./deploy.sh deploy
+```
+
+### 4. Create a Sample Resource
+
+```bash
+kubectl apply -f ../test-resource.yaml
+```
+
+### 5. Verify the Resource Status
+
+```bash
+kubectl get newresources -n newresource-system
+```
+
+You should see the resource with `READY` status set to `true`.
+
+## Development
+
+### Build the Controller Binary
+
+```bash
+make build
+```
+
+### Run the Controller Locally
+
+```bash
+make run
+```
+
+### Build and Push Docker Image
+
+```bash
+make docker-build docker-push IMG=<your-registry>/newresource-controller:tag
+```
+
+### Deploy to Kubernetes
+
+```bash
+make deploy
+```
+
+## Testing
+
+### Run Unit Tests
+
+```bash
+make test
+```
+
+### Test Deployment
+
+```bash
+make test-deploy
+```
+
+## Cleanup
+
+### Undeploy the Controller
+
+```bash
+./deploy.sh cleanup
+```
+
+### Delete Kind Cluster
+
+```bash
+kind delete cluster
+```
+
+## Project Structure
+
+- `api/v1alpha1/` - Custom resource definitions and API types
+- `config/` - Kubernetes manifests for deploying the controller
+- `controllers/` - Controller implementation
+- `main.go` - Entry point for the controller manager
+- `Dockerfile` - Docker image definition
+- `Makefile` - Build and deployment targets
+- `deploy.sh` - Deployment script
+- `build-and-load.sh` - Script to build and load the controller image into Kind
+
+## Custom Resource Definition
+
+The NewResource custom resource has the following structure:
+
+```
+apiVersion: apps.newresource.com/v1alpha1
+kind: NewResource
+metadata:
+  name: example
+  namespace: newresource-system
+spec:
+  foo: "example-value"
+status:
+  ready: true
+```
+
+## Metrics
+
+The controller exposes Prometheus metrics on port 8080:
+
+- `controller_reconcile_total` - Total number of reconciliation attempts
+- `controller_reconcile_duration_seconds` - Time spent reconciling resources
+- `controller_reconcile_errors_total` - Total number of reconciliation errors
+
+## Troubleshooting
+
+### Controller Pod Not Starting
+
+Check the pod logs:
+
+```bash
+kubectl logs -n newresource-system deployment/newresource-controller -c manager
+```
+
+### Resource Not Getting Ready Status
+
+Check the controller logs and ensure the CRD is installed:
+
+```bash
+kubectl get crd newresources.apps.newresource.com
+```
 
 [![CI](https://github.com/abezr/mastering-k8s/workflows/CI/badge.svg)](https://github.com/abezr/mastering-k8s/actions)
 [![Go Version](https://img.shields.io/badge/go-1.21-blue.svg)](https://golang.org/)

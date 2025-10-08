@@ -1,7 +1,7 @@
 apiVersion: apps.newresource.com/v1alpha1
 kind: NewResource
 metadata:
-  name: codespaces-test-resource
+  name: test-resource
   namespace: newresource-system
 spec:
-  foo: "GitHub Codespaces Test"
+  foo: "test-value"

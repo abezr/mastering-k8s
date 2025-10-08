@@ -32,7 +32,7 @@ spec:
       containers:
       - name: manager
         image: docker.io/library/newresource-controller:latest
-        imagePullPolicy: Never
+        imagePullPolicy: IfNotPresent
         command:
         - /manager
         args:

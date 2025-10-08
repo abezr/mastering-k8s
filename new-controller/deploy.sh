@@ -152,6 +152,9 @@ deploy() {
     check_kubectl
     check_cluster
 
+    # Create namespace if it doesn't exist
+    kubectl create namespace newresource-system --dry-run=client -o yaml | kubectl apply -f -
+
     install_crds
     install_rbac
     deploy_controller

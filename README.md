@@ -302,3 +302,104 @@ sudo kubebuilder/bin/kubectl get all -A
 11. Start kubelet
 12. Start controller manager
 13. Verify setup
+
+# Mastering Kubernetes
+
+This repository contains examples and exercises for mastering Kubernetes.
+
+## Setup Script
+
+The [setup.sh](setup.sh) script provides various commands to set up and test a Kubernetes environment:
+
+```bash
+# Make the script executable
+chmod +x setup.sh
+
+# See available commands
+./setup.sh
+
+# Verify Codespaces environment
+./setup.sh verify
+
+# Set up a Kind cluster for testing
+./setup.sh kind
+
+# Deploy the controller to the Kind cluster
+./setup.sh deploy
+
+# Run a full test (verify, deploy, test)
+./setup.sh full-test
+
+# Test controller deployment
+./setup.sh test
+```
+
+## Controller Directory
+
+The [new-controller](new-controller) directory contains a sample Kubernetes controller implementation:
+
+- Custom Resource Definition (CRD) for `NewResource`
+- Controller implementation that sets resources as ready
+- Deployment manifests
+- Scripts for building and deploying the controller
+
+## Quick Start with Controller
+
+1. Create a Kind cluster:
+   ```bash
+   ./setup.sh kind
+   ```
+
+2. Navigate to the controller directory:
+   ```bash
+   cd new-controller
+   ```
+
+3. Build and load the controller image:
+   ```bash
+   ./build-and-load.sh
+   ```
+
+4. Deploy the controller:
+   ```bash
+   ./deploy.sh deploy
+   ```
+
+5. Create a test resource:
+   ```bash
+   kubectl apply -f ../test-resource.yaml
+   ```
+
+6. Verify the resource is ready:
+   ```bash
+   kubectl get newresources -n newresource-system
+   ```
+
+## Running End-to-End Tests
+
+To run the end-to-end tests:
+
+```bash
+cd new-controller
+./test-e2e.sh
+```
+
+This will:
+1. Create a Kind cluster
+2. Build and load the controller image
+3. Deploy the controller
+4. Create a test resource
+5. Verify the resource becomes ready
+6. Clean up everything
+
+## Troubleshooting
+
+If you encounter issues:
+
+1. Make sure all prerequisites are installed (kubectl, kind, docker)
+2. Check that Docker is running
+3. Verify you have sufficient permissions
+4. Check the logs of the controller pod:
+   ```bash
+   kubectl logs -n newresource-system deployment/newresource-controller -c manager
+   ```
