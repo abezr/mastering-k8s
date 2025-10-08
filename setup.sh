@@ -77,7 +77,7 @@ download_components() {
     # Create necessary directories if they don't exist
     mkdir -p ./kubebuilder/bin
     sudo mkdir -p /etc/cni/net.d
-    sudo mkdir -p /var/lib/kubelet
+    mkdir -p /tmp/kubelet
     sudo mkdir -p /etc/kubernetes/manifests
     sudo mkdir -p /var/log/kubernetes
     sudo mkdir -p /etc/containerd/
@@ -211,8 +211,8 @@ EOF
     sudo mkdir -p /var/lib/containerd
     sudo chmod 711 /var/lib/containerd
 
-    # Configure kubelet
-    cat << EOF | sudo tee /tmp/kubelet-config.yaml
+    # Configure kubelet (avoid permission issues by not using chmod on /tmp files)
+    cat << EOF > /tmp/kubelet-config.yaml
 apiVersion: kubelet.config.k8s.io/v1beta1
 kind: KubeletConfiguration
 authentication:
@@ -238,15 +238,14 @@ EOF
 
     # Create required directories with proper permissions
     mkdir -p /tmp/kubelet/pods
-    chmod 750 /tmp/kubelet/pods
+    chmod 750 /tmp/kubelet/pods 2>/dev/null || true
     mkdir -p /tmp/kubelet/plugins
-    chmod 750 /tmp/kubelet/plugins
+    chmod 750 /tmp/kubelet/plugins 2>/dev/null || true
     mkdir -p /tmp/kubelet/plugins_registry
-    chmod 750 /tmp/kubelet/plugins_registry
+    chmod 750 /tmp/kubelet/plugins_registry 2>/dev/null || true
 
-    # Ensure proper permissions
-    chmod 644 /tmp/kubelet/ca.crt
-    chmod 644 /tmp/kubelet-config.yaml
+    # Ensure proper permissions (ignore permission errors)
+    chmod 644 /tmp/kubelet/ca.crt 2>/dev/null || true
 
     # Generate self-signed kubelet serving certificate if not present
     if [ ! -f "/tmp/kubelet/pki/kubelet.crt" ] || [ ! -f "/tmp/kubelet/pki/kubelet.key" ]; then
@@ -257,8 +256,8 @@ EOF
             -out /tmp/kubelet/pki/kubelet.crt \
             -days 365 \
             -subj "/CN=$(hostname)"
-        chmod 600 /tmp/kubelet/pki/kubelet.key
-        chmod 644 /tmp/kubelet/pki/kubelet.crt
+        chmod 600 /tmp/kubelet/pki/kubelet.key 2>/dev/null || true
+        chmod 644 /tmp/kubelet/pki/kubelet.crt 2>/dev/null || true
     fi
 }
 

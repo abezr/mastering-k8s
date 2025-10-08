@@ -39,10 +39,10 @@ func main() {
 
 
 	mgr, err := manager.New(config.GetConfigOrDie(), manager.Options{
-		Scheme:           scheme,
-		Metrics:          metricsServerOptions,
-		LeaderElection:   enableLeaderElection,
-		LeaderElectionID: "newresource-controller",
+		Scheme:                 scheme,
+		Metrics:                metricsServerOptions,
+		LeaderElection:         enableLeaderElection,
+		LeaderElectionID:       "newresource-controller",
 		HealthProbeBindAddress: ":8081",
 		ReadinessEndpointName:  "/readyz",
 		LivenessEndpointName:   "/healthz",

@@ -31,13 +31,13 @@ spec:
           type: RuntimeDefault
       containers:
       - name: manager
-        image: docker.io/library/newresource-controller:latest
+        image: newresource-controller:latest
         imagePullPolicy: IfNotPresent
         command:
         - /manager
         args:
         - --metrics-bind-address=:8080
-        - --leader-elect=true
+        - --leader-elect=false
         ports:
         - name: metrics
           containerPort: 8080
