@@ -53,7 +53,6 @@ check_running() {
     is_running "etcd" && \
     is_running "kube-apiserver" && \
     is_running "kube-controller-manager" && \
-    is_running "cloud-controller-manager" && \
     is_running "kube-scheduler" && \
     is_running "kubelet" && \
     is_running "containerd"
@@ -123,10 +122,8 @@ download_components() {
         echo "Downloading additional components..."
         curl -L "https://dl.k8s.io/v1.30.0/bin/linux/amd64/kube-controller-manager" -o kubebuilder/bin/kube-controller-manager
         curl -L "https://dl.k8s.io/v1.30.0/bin/linux/amd64/kube-scheduler" -o kubebuilder/bin/kube-scheduler
-        curl -L "https://dl.k8s.io/v1.30.0/bin/linux/amd64/cloud-controller-manager" -o kubebuilder/bin/cloud-controller-manager
         chmod 755 kubebuilder/bin/kube-controller-manager
         chmod 755 kubebuilder/bin/kube-scheduler
-        chmod 755 kubebuilder/bin/cloud-controller-manager
     fi
 }
 
@@ -155,10 +152,10 @@ setup_configs() {
     mkdir -p "$HOME/.kube"
     
     # Create kubeconfig file
-    kubectl config set-credentials test-user --token=1234567890 >/dev/null
-    kubectl config set-cluster test-env --server=https://127.0.0.1:6443 --insecure-skip-tls-verify=true >/dev/null
-    kubectl config set-context test-context --cluster=test-env --user=test-user --namespace=default >/dev/null
-    kubectl config use-context test-context >/dev/null
+    ./kubebuilder/bin/kubectl config set-credentials test-user --token=1234567890 >/dev/null
+    ./kubebuilder/bin/kubectl config set-cluster test-env --server=https://127.0.0.1:6443 --insecure-skip-tls-verify=true >/dev/null
+    ./kubebuilder/bin/kubectl config set-context test-context --cluster=test-env --user=test-user --namespace=default >/dev/null
+    ./kubebuilder/bin/kubectl config use-context test-context >/dev/null
 
     # Configure CNI
     cat <<EOF | sudo tee /etc/cni/net.d/10-mynet.conf
@@ -261,6 +258,28 @@ EOF
     fi
 }
 
+# Function to check if API server is ready
+wait_for_api_server() {
+    local timeout=60
+    local count=0
+    
+    echo "Waiting for API server to be ready..."
+    
+    while [ $count -lt $timeout ]; do
+        if ./kubebuilder/bin/kubectl cluster-info &>/dev/null; then
+            print_success "API server is ready"
+            return 0
+        fi
+        
+        count=$((count + 5))
+        echo "Still waiting for API server... (${count}s/${timeout}s)"
+        sleep 5
+    done
+    
+    print_error "API server failed to start within timeout"
+    return 1
+}
+
 start() {
     if check_running; then
         echo "Kubernetes components are already running"
@@ -281,12 +300,20 @@ start() {
         echo "Starting containerd..."
         export PATH=$PATH:/opt/cni/bin:./kubebuilder/bin
         sudo PATH=$PATH:/opt/cni/bin containerd -c /etc/containerd/config.toml &
-        sleep 3
+        sleep 5
+        
+        # Verify containerd started
+        if ! is_running "containerd"; then
+            print_error "Failed to start containerd"
+            return 1
+        fi
+        print_success "containerd started"
     fi
 
     # Start etcd
     if ! is_running "etcd"; then
         echo "Starting etcd..."
+        mkdir -p ./etcd
         ./kubebuilder/bin/etcd \
             --advertise-client-urls http://$HOST_IP:2379 \
             --listen-client-urls http://0.0.0.0:2379 \
@@ -296,7 +323,14 @@ start() {
             --initial-advertise-peer-urls http://$HOST_IP:2380 \
             --initial-cluster-state new \
             --initial-cluster-token test-token &
-        sleep 3
+        sleep 5
+        
+        # Verify etcd started
+        if ! is_running "etcd"; then
+            print_error "Failed to start etcd"
+            return 1
+        fi
+        print_success "etcd started"
     fi
 
     # Start kube-apiserver
@@ -316,11 +350,23 @@ start() {
             --storage-backend=etcd3 \
             --storage-media-type=application/json \
             --v=2 \
-            --cloud-provider=external \
             --service-account-issuer=https://kubernetes.default.svc.cluster.local \
             --service-account-key-file=/tmp/sa.pub \
             --service-account-signing-key-file=/tmp/sa.key &
-        sleep 5
+        sleep 10
+        
+        # Verify kube-apiserver started
+        if ! is_running "kube-apiserver"; then
+            print_error "Failed to start kube-apiserver"
+            return 1
+        fi
+        print_success "kube-apiserver started"
+    fi
+
+    # Wait for API server to be ready before starting other components
+    if ! wait_for_api_server; then
+        print_error "API server failed to become ready"
+        return 1
     fi
 
     # Start kube-scheduler
@@ -331,7 +377,14 @@ start() {
             --leader-elect=false \
             --v=2 \
             --bind-address=0.0.0.0 &
-        sleep 2
+        sleep 5
+        
+        # Verify kube-scheduler started
+        if ! is_running "kube-scheduler"; then
+            print_error "Failed to start kube-scheduler"
+            return 1
+        fi
+        print_success "kube-scheduler started"
     fi
 
     # Start kube-controller-manager
@@ -340,14 +393,20 @@ start() {
         ./kubebuilder/bin/kube-controller-manager \
             --kubeconfig=$HOME/.kube/config \
             --leader-elect=false \
-            --cloud-provider=external \
             --service-cluster-ip-range=10.0.0.0/24 \
             --cluster-name=kubernetes \
             --root-ca-file=/tmp/kubelet/ca.crt \
             --service-account-private-key-file=/tmp/sa.key \
             --use-service-account-credentials=true \
             --v=2 &
-        sleep 2
+        sleep 5
+        
+        # Verify kube-controller-manager started
+        if ! is_running "kube-controller-manager"; then
+            print_error "Failed to start kube-controller-manager"
+            return 1
+        fi
+        print_success "kube-controller-manager started"
     fi
 
     # Start kubelet
@@ -364,25 +423,29 @@ start() {
             --hostname-override=$(hostname) \
             --pod-infra-container-image=registry.k8s.io/pause:3.10 \
             --node-ip=$HOST_IP \
-            --cloud-provider=external \
             --cgroup-driver=cgroupfs \
             --max-pods=4  \
             --v=1 &
+        sleep 5
+        
+        # Verify kubelet started
+        if ! is_running "kubelet"; then
+            print_error "Failed to start kubelet"
+            return 1
+        fi
+        print_success "kubelet started"
     fi
 
-    echo "Waiting for components to be ready..."
+    echo "Waiting for all components to be ready..."
     sleep 10
 
     echo "Verifying setup..."
-    kubectl get nodes || true
-    kubectl get all -A || true
-    kubectl get componentstatuses || true
+    ./kubebuilder/bin/kubectl get nodes || true
+    ./kubebuilder/bin/kubectl get all -A || true
 }
 
 stop() {
     echo "Stopping Kubernetes components..."
-    stop_process "cloud-controller-manager"
-    stop_process "gce_metadata_server"
     stop_process "kube-controller-manager"
     stop_process "kubelet"
     stop_process "kube-scheduler"
@@ -426,17 +489,17 @@ test_deployment() {
     print_info "Testing controller deployment..."
 
     # Check if controller pod is running
-    if kubectl get pods -n newresource-system -l app.kubernetes.io/name=newresource-controller &> /dev/null; then
+    if ./kubebuilder/bin/kubectl get pods -n newresource-system -l app.kubernetes.io/name=newresource-controller &> /dev/null; then
         print_success "Controller pod is running"
 
         # Check CRDs
-        if kubectl get crd newresources.apps.newresource.com &> /dev/null; then
+        if ./kubebuilder/bin/kubectl get crd newresources.apps.newresource.com &> /dev/null; then
             print_success "CRDs are installed"
 
             # Check custom resources
-            if kubectl get newresources -n newresource-system &> /dev/null; then
+            if ./kubebuilder/bin/kubectl get newresources -n newresource-system &> /dev/null; then
                 print_success "Custom resources are available"
-                kubectl get newresources -n newresource-system
+                ./kubebuilder/bin/kubectl get newresources -n newresource-system
             else
                 print_warning "No custom resources found"
             fi
@@ -449,7 +512,7 @@ test_deployment() {
 
     # Show deployment status
     print_info "Deployment status:"
-    kubectl get all -n newresource-system 2>/dev/null || print_warning "No resources in newresource-system namespace"
+    ./kubebuilder/bin/kubectl get all -n newresource-system 2>/dev/null || print_warning "No resources in newresource-system namespace"
 }
 
 # Function to verify Codespaces environment

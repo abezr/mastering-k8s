@@ -321,7 +321,7 @@ chmod +x setup.sh
 # Verify Codespaces environment
 ./setup.sh verify
 
-# Set up a Kind cluster for testing
+# Set up a Kind cluster for testing (Recommended)
 ./setup.sh kind
 
 # Deploy the controller to the Kind cluster
@@ -332,6 +332,12 @@ chmod +x setup.sh
 
 # Test controller deployment
 ./setup.sh test
+
+# Start local Kubernetes cluster (Advanced - may not work in all environments)
+./setup.sh start
+
+# Check status of local Kubernetes components
+./check-status.sh
 ```
 
 ## Controller Directory
@@ -343,7 +349,9 @@ The [new-controller](new-controller) directory contains a sample Kubernetes cont
 - Deployment manifests
 - Scripts for building and deploying the controller
 
-## Quick Start with Controller
+## Recommended Approach: Using Kind
+
+For the most reliable experience, we recommend using Kind (Kubernetes in Docker):
 
 1. Create a Kind cluster:
    ```bash
@@ -355,9 +363,9 @@ The [new-controller](new-controller) directory contains a sample Kubernetes cont
    cd new-controller
    ```
 
-3. Build and load the controller image:
+3. Build the controller image:
    ```bash
-   ./build-and-load.sh
+   ./build-local.sh
    ```
 
 4. Deploy the controller:
@@ -374,6 +382,31 @@ The [new-controller](new-controller) directory contains a sample Kubernetes cont
    ```bash
    kubectl get newresources -n newresource-system
    ```
+
+## Alternative Approach: Local Control Plane
+
+If you want to try running the Kubernetes control plane components directly:
+
+1. Start the components:
+   ```bash
+   ./setup.sh start
+   ```
+
+2. Check the status:
+   ```bash
+   ./check-status.sh
+   ```
+
+3. If all components are running, proceed with controller deployment:
+   ```bash
+   cd new-controller
+   ./build-local.sh
+   ./deploy.sh deploy
+   kubectl apply -f ../test-resource.yaml
+   kubectl get newresources -n newresource-system
+   ```
+
+Note: This approach may not work reliably in all environments, particularly in Codespaces due to resource constraints.
 
 ## Running End-to-End Tests
 
@@ -403,3 +436,15 @@ If you encounter issues:
    ```bash
    kubectl logs -n newresource-system deployment/newresource-controller -c manager
    ```
+
+5. For local control plane issues, check component status:
+   ```bash
+   ./check-status.sh
+   ```
+
+## Components
+
+- `setup.sh` - Main setup script for the environment
+- `check-status.sh` - Script to check the status of Kubernetes components
+- `test-resource.yaml` - Sample custom resource for testing
+- `new-controller/` - Directory containing the controller implementation
