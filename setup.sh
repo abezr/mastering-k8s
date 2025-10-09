@@ -482,13 +482,16 @@ setup_kind() {
     # Check if cluster already exists
     if ./kind get clusters | grep -q "codespaces-test-cluster"; then
         print_warning "Kind cluster 'codespaces-test-cluster' already exists"
-        print_info "Skipping cluster creation"
+        print_info "Setting up kubeconfig for existing cluster..."
+        ./kind export kubeconfig --name codespaces-test-cluster
+        print_success "Kubeconfig set for existing cluster"
         return 0
     fi
 
     # Create Kind cluster
     print_info "Creating Kind cluster..."
     ./kind create cluster --name codespaces-test-cluster
+    ./kind export kubeconfig --name codespaces-test-cluster
 
     print_success "Kind cluster created successfully"
 }
@@ -500,20 +503,11 @@ test_deployment() {
     # Make sure kubectl is in PATH
     export PATH="$PWD/kubebuilder/bin:$PATH"
     
-    # Check if we're using the Kind cluster context
-    if ! kubectl config current-context | grep -q "kind-codespaces-test-cluster"; then
-        print_warning "Not using Kind cluster context. Switching to Kind context..."
-        if [ -f "./kind" ]; then
-            export PATH="$PWD:$PATH"
-            if ./kind get clusters | grep -q "codespaces-test-cluster"; then
-                ./kind export kubeconfig --name codespaces-test-cluster
-            else
-                print_error "No Kind cluster found. Please create one with './setup.sh kind'"
-                return 1
-            fi
-        else
-            print_error "Kind binary not found"
-            return 1
+    # Ensure we're using the Kind cluster context
+    if [ -f "./kind" ]; then
+        export PATH="$PWD:$PATH"
+        if ./kind get clusters | grep -q "codespaces-test-cluster"; then
+            ./kind export kubeconfig --name codespaces-test-cluster
         fi
     fi
 
@@ -574,6 +568,109 @@ verify_codespaces() {
     else
         print_warning "Not running in GitHub Codespaces"
     fi
+}
+
+# Function to check if kubectl is available
+check_kubectl() {
+    if ! command -v kubectl &> /dev/null; then
+        print_error "kubectl not found. Please install kubectl first."
+        exit 1
+    fi
+}
+
+# Function to check if Kind cluster is available
+check_cluster() {
+    if [ -f "./kind" ]; then
+        if ! ./kind get clusters | grep -q "codespaces-test-cluster"; then
+            print_error "Kind cluster not found. Please create one with './setup.sh kind'"
+            exit 1
+        fi
+    else
+        print_error "Kind binary not found. Please create a cluster with './setup.sh kind'"
+        exit 1
+    fi
+}
+
+# Function to wait for deployment readiness
+wait_for_deployment() {
+    local timeout=60
+    local count=0
+    
+    echo "Waiting for controller deployment to be ready..."
+
+    while [ $count -lt $timeout ]; do
+        if kubectl get pods -n newresource-system -l app.kubernetes.io/name=newresource-controller -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}' | grep -q "True"; then
+            print_success "Controller deployment is ready"
+            return 0
+        fi
+        
+        count=$((count + 5))
+        echo "Still waiting for controller deployment... (${count}s/${timeout}s)"
+        sleep 5
+    done
+    
+    print_error "Controller deployment failed to become ready within timeout"
+    return 1
+}
+
+# Function to show deployment status
+show_status() {
+    print_info "Deployment status:"
+    kubectl get all -n newresource-system 2>/dev/null || print_warning "No resources in newresource-system namespace"
+}
+
+# Main deployment function
+deploy_controller() {
+    print_info "Starting deployment to $(detect_cluster_type) cluster..."
+
+    check_kubectl
+    check_cluster
+
+    # Create namespace if it doesn't exist
+    kubectl create namespace newresource-system --dry-run=client -o yaml | kubectl apply -f -
+
+    # Regenerate and install CRDs to ensure they're up to date
+    print_info "Regenerating and installing Custom Resource Definitions..."
+    if [ -f "./new-controller/controller-gen" ] || command -v controller-gen &> /dev/null; then
+        cd new-controller
+        controller-gen crd paths="./..." output:crd:artifacts:config=config/crd/bases
+        cd ..
+    else
+        print_warning "controller-gen not found, using existing CRD manifests"
+    fi
+    
+    kubectl apply -f new-controller/config/crd/bases/
+    print_success "CRDs installed successfully"
+
+    # Install RBAC resources
+    print_info "Installing RBAC resources..."
+    kubectl apply -f new-controller/config/rbac/
+    print_success "RBAC resources installed successfully"
+
+    # Deploy controller
+    print_info "Deploying controller..."
+    kubectl apply -f new-controller/config/deployment.yaml
+    kubectl apply -f new-controller/config/service.yaml
+    print_success "Controller deployed successfully"
+
+    # Wait for deployment readiness
+    wait_for_deployment
+
+    # Show status
+    show_status
+    print_success "Deployment completed successfully!"
+    print_info "You can now create custom resources using: kubectl apply -f <your-resource>.yaml"
+}
+
+# Function to detect cluster type
+detect_cluster_type() {
+    if [ -f "./kind" ]; then
+        if ./kind get clusters | grep -q "codespaces-test-cluster"; then
+            echo "Kind"
+        fi
+    fi
+
+    echo "Unknown"
 }
 
 case "${1:-}" in

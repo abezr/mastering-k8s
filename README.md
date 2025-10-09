@@ -402,6 +402,19 @@ This will:
 3. Build and deploy the controller
 4. Test the deployment
 
+## Automated Setup
+
+For a fully automated setup process that handles all configuration automatically:
+```bash
+./auto-setup.sh
+```
+
+This script will:
+1. Set up the Kind cluster with proper context
+2. Build and load the controller image
+3. Deploy the controller with updated CRDs
+4. Run verification tests
+
 ## Testing Controller Functionality
 
 To specifically test if the controller is functioning correctly:

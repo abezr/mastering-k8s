@@ -1,0 +1,7 @@
+apiVersion: apps.newresource.com/v1alpha1
+kind: NewResource
+metadata:
+  name: automated-test
+  namespace: newresource-system
+spec:
+  foo: automated-test-value

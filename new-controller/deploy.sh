@@ -74,6 +74,15 @@ detect_cluster_type() {
 # Function to install CRDs
 install_crds() {
     print_info "Installing Custom Resource Definitions..."
+    
+    # Always regenerate CRDs to ensure they match the current API
+    if command -v controller-gen &> /dev/null; then
+        print_info "Regenerating CRDs from current API definitions..."
+        controller-gen crd paths="./..." output:crd:artifacts:config=config/crd/bases
+    else
+        print_warning "controller-gen not found, using existing CRD manifests"
+    fi
+    
     kubectl apply -f config/crd/bases/
     print_success "CRDs installed successfully"
 }
@@ -144,7 +153,7 @@ show_status() {
 
     # Show CRDs
     echo "Custom Resource Definitions:"
-    kubectl get crd | grep example.com || echo "  No CRDs found"
+    kubectl get crd | grep newresources || echo "  No CRDs found"
 
     echo ""
     echo "Controller Resources:"
@@ -152,7 +161,21 @@ show_status() {
 
     echo ""
     echo "Custom Resources:"
-    kubectl get newresources 2>/dev/null || echo "  No custom resources found"
+    if kubectl get newresources -n newresource-system &> /dev/null; then
+        kubectl get newresources -n newresource-system
+        echo ""
+        print_info "Sample resource status check:"
+        # Check status of first resource
+        FIRST_RESOURCE=$(kubectl get newresources -n newresource-system -o name | head -n 1 | cut -d/ -f2)
+        if [ ! -z "$FIRST_RESOURCE" ]; then
+            echo "Resource: $FIRST_RESOURCE"
+            kubectl get newresources "$FIRST_RESOURCE" -n newresource-system -o jsonpath='{.status}' | grep -q "ready" && \
+                echo "  Status: Ready (true)" || \
+                echo "  Status: Not ready or not set"
+        fi
+    else
+        echo "  No custom resources found"
+    fi
 }
 
 # Main deployment function

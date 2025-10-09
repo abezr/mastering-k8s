@@ -23,7 +23,8 @@ type NewResourceSpec struct {
 
 type NewResourceStatus struct {
 	// Ready indicates whether the resource is ready
-	// Removing omitempty to ensure status is always visible
+	// Defaulting to false to ensure status is always visible
+	// +kubebuilder:default=false
 	Ready bool `json:"ready"`
 }
 

@@ -61,6 +61,15 @@ fi
 CLUSTER_NAME=$(echo $KIND_CLUSTERS | awk '{print $1}')
 print_info "Using Kind cluster: $CLUSTER_NAME"
 
+# Regenerate CRDs to ensure they match the current API
+print_info "Regenerating CRDs from current API definitions..."
+if command -v controller-gen &> /dev/null; then
+    controller-gen crd paths="./..." output:crd:artifacts:config=config/crd/bases
+    print_success "CRDs regenerated successfully"
+else
+    print_warning "controller-gen not found, using existing CRD manifests"
+fi
+
 # Build the Docker image
 print_info "Building Docker image..."
 docker build -t newresource-controller:latest .
