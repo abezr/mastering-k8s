@@ -63,24 +63,32 @@ func (r *NewResourceReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		if client.IgnoreNotFound(err) == nil {
 			// Resource not found - normal case
 			reconcileTotalCounter.WithLabelValues(controllerName, "not_found").Inc()
+			logger.Info("Resource not found, ignoring", "name", req.NamespacedName)
 			return ctrl.Result{}, nil
 		}
 		// Actual error
 		reconcileTotalCounter.WithLabelValues(controllerName, "error").Inc()
 		reconcileErrorsCounter.WithLabelValues(controllerName, "get_resource").Inc()
-		logger.Error(err, "Failed to get resource")
+		logger.Error(err, "Failed to get resource", "name", req.NamespacedName)
 		return ctrl.Result{}, err
 	}
 
-	logger.Info("Reconciling", "name", resource.Name)
+	logger.Info("Reconciling", "name", resource.Name, "namespace", resource.Namespace)
 
+	// Set the resource status to ready
 	resource.Status.Ready = true
+
+	logger.Info("Attempting to update resource status", "name", resource.Name, "namespace", resource.Namespace, "ready", resource.Status.Ready)
+
+	// Update the status
 	if err := r.Status().Update(ctx, &resource); err != nil {
 		reconcileTotalCounter.WithLabelValues(controllerName, "error").Inc()
 		reconcileErrorsCounter.WithLabelValues(controllerName, "status_update").Inc()
-		logger.Error(err, "Failed to update resource status")
+		logger.Error(err, "Failed to update resource status", "name", resource.Name, "namespace", resource.Namespace)
 		return ctrl.Result{}, err
 	}
+
+	logger.Info("Successfully reconciled resource", "name", resource.Name, "namespace", resource.Namespace, "ready", resource.Status.Ready)
 
 	// Success
 	reconcileTotalCounter.WithLabelValues(controllerName, "success").Inc()

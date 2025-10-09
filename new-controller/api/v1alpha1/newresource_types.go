@@ -6,6 +6,7 @@ import (
 
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Ready",type="boolean",JSONPath=".status.ready",description="Whether the resource is ready"
 type NewResource struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -16,10 +17,14 @@ type NewResource struct {
 
 type NewResourceSpec struct {
 	Foo string `json:"foo,omitempty"`
+	// Adding this field to help with testing reconciliation
+	ReconcileTrigger bool `json:"reconcileTrigger,omitempty"`
 }
 
 type NewResourceStatus struct {
-	Ready bool `json:"ready,omitempty"`
+	// Ready indicates whether the resource is ready
+	// Removing omitempty to ensure status is always visible
+	Ready bool `json:"ready"`
 }
 
 // +kubebuilder:object:root=true

@@ -402,6 +402,21 @@ This will:
 3. Build and deploy the controller
 4. Test the deployment
 
+## Testing Controller Functionality
+
+To specifically test if the controller is functioning correctly:
+
+```bash
+./test-controller-functionality.sh
+```
+
+This script will:
+1. Verify the cluster connection
+2. Check if the controller is deployed and running
+3. Create a test resource
+4. Verify that the controller automatically sets the resource status to ready
+5. Clean up the test resource
+
 ## Alternative Approach: Local Control Plane
 
 If you want to try running the Kubernetes control plane components directly:

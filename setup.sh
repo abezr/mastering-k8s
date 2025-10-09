@@ -476,11 +476,11 @@ setup_kind() {
         chmod +x kind
     fi
 
-    # Add current directory to PATH
+    # Add current directory to PATH and export it
     export PATH="$PWD:$PATH"
 
     # Check if cluster already exists
-    if kind get clusters | grep -q "codespaces-test-cluster"; then
+    if ./kind get clusters | grep -q "codespaces-test-cluster"; then
         print_warning "Kind cluster 'codespaces-test-cluster' already exists"
         print_info "Skipping cluster creation"
         return 0
@@ -505,8 +505,8 @@ test_deployment() {
         print_warning "Not using Kind cluster context. Switching to Kind context..."
         if [ -f "./kind" ]; then
             export PATH="$PWD:$PATH"
-            if kind get clusters | grep -q "codespaces-test-cluster"; then
-                kind export kubeconfig --name codespaces-test-cluster
+            if ./kind get clusters | grep -q "codespaces-test-cluster"; then
+                ./kind export kubeconfig --name codespaces-test-cluster
             else
                 print_error "No Kind cluster found. Please create one with './setup.sh kind'"
                 return 1
@@ -542,6 +542,25 @@ test_deployment() {
     # Show deployment status
     print_info "Deployment status:"
     kubectl get all -n newresource-system 2>/dev/null || print_warning "No resources in newresource-system namespace"
+    
+    # Verify controller functionality by checking if resources have status
+    print_info "Verifying controller functionality:"
+    if kubectl get newresources -n newresource-system &> /dev/null; then
+        # Get one resource to check if status is populated
+        FIRST_RESOURCE=$(kubectl get newresources -n newresource-system -o name | head -n 1 | cut -d/ -f2)
+        if [ ! -z "$FIRST_RESOURCE" ]; then
+            STATUS_OUTPUT=$(kubectl get newresources "$FIRST_RESOURCE" -n newresource-system -o jsonpath='{.status.ready}' 2>/dev/null)
+            if [ ! -z "$STATUS_OUTPUT" ]; then
+                print_success "Controller is functioning correctly (status populated)"
+            else
+                print_warning "Controller may not be updating status correctly"
+                print_info "Triggering manual reconciliation..."
+                # Trigger a simple update to force reconciliation
+                kubectl patch newresource "$FIRST_RESOURCE" -n newresource-system -p '{"spec":{"reconcileTrigger":true}}' --type=merge 2>/dev/null || true
+                sleep 3
+            fi
+        fi
+    fi
 }
 
 # Function to verify Codespaces environment

@@ -36,6 +36,11 @@ check_kubectl() {
         export PATH="../kubebuilder/bin:$PATH"
     fi
     
+    # Also check for kind in the parent directory and add to PATH
+    if [ -f "../kind" ]; then
+        export PATH="../:$PATH"
+    fi
+    
     if ! command -v kubectl &> /dev/null; then
         print_error "kubectl is not installed or not in PATH"
         exit 1
@@ -169,6 +174,29 @@ deploy() {
     show_status
     print_success "Deployment completed successfully!"
     print_info "You can now create custom resources using: kubectl apply -f <your-resource>.yaml"
+    
+    # Verify controller functionality
+    print_info "Verifying controller functionality..."
+    verify_controller_functionality
+}
+
+# Function to verify controller functionality
+verify_controller_functionality() {
+    # Check if we have any NewResources
+    if kubectl get newresources -n newresource-system &> /dev/null; then
+        # Get one resource to check status
+        FIRST_RESOURCE=$(kubectl get newresources -n newresource-system -o name | head -n 1 | cut -d/ -f2)
+        if [ ! -z "$FIRST_RESOURCE" ]; then
+            # Wait a moment for reconciliation
+            sleep 3
+            STATUS_OUTPUT=$(kubectl get newresources "$FIRST_RESOURCE" -n newresource-system -o jsonpath='{.status.ready}' 2>/dev/null)
+            if [ "$STATUS_OUTPUT" = "true" ]; then
+                print_success "Controller is functioning correctly (status is ready)"
+            else
+                print_warning "Controller may not be updating status correctly"
+            fi
+        fi
+    fi
 }
 
 # Main cleanup function

@@ -1,7 +1,7 @@
 apiVersion: apps.newresource.com/v1alpha1
 kind: NewResource
 metadata:
-  name: auto-test-resource
+  name: status-test
   namespace: newresource-system
 spec:
-  foo: auto-test-value
+  foo: status-test-value
