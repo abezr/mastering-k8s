@@ -31,6 +31,11 @@ print_error() {
 
 # Function to check if kubectl is available
 check_kubectl() {
+    # Try to use local kubectl first
+    if [ -f "../kubebuilder/bin/kubectl" ]; then
+        export PATH="../kubebuilder/bin:$PATH"
+    fi
+    
     if ! command -v kubectl &> /dev/null; then
         print_error "kubectl is not installed or not in PATH"
         exit 1

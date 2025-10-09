@@ -28,15 +28,24 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# Add local directory to PATH to find kind binary
+export PATH="$PWD:$PATH"
+
 print_info "Verifying Kind cluster setup..."
 
 # Check if Kind is installed
 if ! command -v kind &> /dev/null; then
-    print_error "Kind is not installed"
-    exit 1
+    # Check if kind binary exists in current directory
+    if [ -f "./kind" ]; then
+        print_info "Found local kind binary, making it executable..."
+        chmod +x ./kind
+    else
+        print_error "Kind is not installed and not found in current directory"
+        exit 1
+    fi
 fi
 
-print_success "Kind is installed"
+print_success "Kind is available"
 
 # Check if there are any Kind clusters
 if kind get clusters &> /dev/null; then

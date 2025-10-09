@@ -470,12 +470,14 @@ setup_kind() {
     print_info "Setting up Kind cluster for testing..."
 
     # Download Kind if not present
-    if ! command -v kind &> /dev/null; then
+    if [ ! -f "./kind" ]; then
         print_info "Downloading Kind..."
         curl -Lo kind https://kind.sigs.k8s.io/dl/v0.24.0/kind-linux-amd64
         chmod +x kind
-        export PATH="$PWD:$PATH"
     fi
+
+    # Add current directory to PATH
+    export PATH="$PWD:$PATH"
 
     # Check if cluster already exists
     if kind get clusters | grep -q "codespaces-test-cluster"; then
@@ -495,29 +497,38 @@ setup_kind() {
 test_deployment() {
     print_info "Testing controller deployment..."
 
+    # Make sure kubectl is in PATH
+    export PATH="$PWD/kubebuilder/bin:$PATH"
+    
     # Check if we're using the Kind cluster context
-    if ! ./kubebuilder/bin/kubectl config current-context | grep -q "kind-codespaces-test-cluster"; then
+    if ! kubectl config current-context | grep -q "kind-codespaces-test-cluster"; then
         print_warning "Not using Kind cluster context. Switching to Kind context..."
-        if kind get clusters | grep -q "codespaces-test-cluster"; then
-            kind export kubeconfig --name codespaces-test-cluster
+        if [ -f "./kind" ]; then
+            export PATH="$PWD:$PATH"
+            if kind get clusters | grep -q "codespaces-test-cluster"; then
+                kind export kubeconfig --name codespaces-test-cluster
+            else
+                print_error "No Kind cluster found. Please create one with './setup.sh kind'"
+                return 1
+            fi
         else
-            print_error "No Kind cluster found. Please create one with './setup.sh kind'"
+            print_error "Kind binary not found"
             return 1
         fi
     fi
 
     # Check if controller pod is running
-    if ./kubebuilder/bin/kubectl get pods -n newresource-system -l app.kubernetes.io/name=newresource-controller &> /dev/null; then
+    if kubectl get pods -n newresource-system -l app.kubernetes.io/name=newresource-controller &> /dev/null; then
         print_success "Controller pod is running"
 
         # Check CRDs
-        if ./kubebuilder/bin/kubectl get crd newresources.apps.newresource.com &> /dev/null; then
+        if kubectl get crd newresources.apps.newresource.com &> /dev/null; then
             print_success "CRDs are installed"
 
             # Check custom resources
-            if ./kubebuilder/bin/kubectl get newresources -n newresource-system &> /dev/null; then
+            if kubectl get newresources -n newresource-system &> /dev/null; then
                 print_success "Custom resources are available"
-                ./kubebuilder/bin/kubectl get newresources -n newresource-system
+                kubectl get newresources -n newresource-system
             else
                 print_warning "No custom resources found"
             fi
@@ -530,7 +541,7 @@ test_deployment() {
 
     # Show deployment status
     print_info "Deployment status:"
-    ./kubebuilder/bin/kubectl get all -n newresource-system 2>/dev/null || print_warning "No resources in newresource-system namespace"
+    kubectl get all -n newresource-system 2>/dev/null || print_warning "No resources in newresource-system namespace"
 }
 
 # Function to verify Codespaces environment
