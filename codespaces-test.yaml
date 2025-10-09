@@ -1,0 +1,7 @@
+apiVersion: apps.newresource.com/v1alpha1
+kind: NewResource
+metadata:
+  name: codespaces-test
+  namespace: newresource-system
+spec:
+  foo: "codespaces-test-value"
