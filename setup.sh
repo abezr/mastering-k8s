@@ -477,6 +477,13 @@ setup_kind() {
         export PATH="$PWD:$PATH"
     fi
 
+    # Check if cluster already exists
+    if kind get clusters | grep -q "codespaces-test-cluster"; then
+        print_warning "Kind cluster 'codespaces-test-cluster' already exists"
+        print_info "Skipping cluster creation"
+        return 0
+    fi
+
     # Create Kind cluster
     print_info "Creating Kind cluster..."
     ./kind create cluster --name codespaces-test-cluster
@@ -487,6 +494,17 @@ setup_kind() {
 # Function to test deployment
 test_deployment() {
     print_info "Testing controller deployment..."
+
+    # Check if we're using the Kind cluster context
+    if ! ./kubebuilder/bin/kubectl config current-context | grep -q "kind-codespaces-test-cluster"; then
+        print_warning "Not using Kind cluster context. Switching to Kind context..."
+        if kind get clusters | grep -q "codespaces-test-cluster"; then
+            kind export kubeconfig --name codespaces-test-cluster
+        else
+            print_error "No Kind cluster found. Please create one with './setup.sh kind'"
+            return 1
+        fi
+    fi
 
     # Check if controller pod is running
     if ./kubebuilder/bin/kubectl get pods -n newresource-system -l app.kubernetes.io/name=newresource-controller &> /dev/null; then

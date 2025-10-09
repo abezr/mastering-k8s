@@ -1,49 +1,45 @@
-#!/bin/bash
+@abezr ➜ /workspaces/mastering-k8s (main) $ ./setup.sh kind
+[INFO] Detected environment: codespaces
+Setting up Kubernetes control plane for AMD64...
+[INFO] Setting up Kind cluster for testing...
+[INFO] Downloading Kind...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100    97  100    97    0     0    312      0 --:--:-- --:--:-- --:--:--   311
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100 9697k  100 9697k    0     0  16.4M      0 --:--:-- --:--:-- --:--:-- 16.4M
+[INFO] Creating Kind cluster...
+Creating cluster "codespaces-test-cluster" ...
+ ✓ Ensuring node image (kindest/node:v1.31.0) 🖼 
+ ✓ Preparing nodes 📦  
+ ✓ Writing configuration 📜 
+ ✓ Starting control-plane 🕹️ 
+ ✓ Installing CNI 🔌 
+ ✓ Installing StorageClass 💾 
+Set kubectl context to "kind-codespaces-test-cluster"
+You can now use your cluster with:
 
-# Script to build the controller image locally for testing
+kubectl cluster-info --context kind-codespaces-test-cluster
 
-set -e
-
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
-
-# Function to print colored output
-print_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
-}
-
-print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
-}
-
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# Check if Docker is available
-if ! command -v docker &> /dev/null; then
-    print_error "Docker is not installed or not in PATH"
-    print_info "Please install Docker"
-    exit 1
-fi
-
-# Check if we're in the right directory
-if [ ! -f "Dockerfile" ]; then
-    print_error "Dockerfile not found. Please run this script from the controller directory."
-    exit 1
-fi
-
-# Build the Docker image
-print_info "Building Docker image..."
-docker build -t newresource-controller:latest .
-
-print_success "Image built successfully!"
-print_info "You can now deploy the controller using: ./deploy.sh deploy"
+Not sure what to do next? 😅  Check out https://kind.sigs.k8s.io/docs/user/quick-start/
+[SUCCESS] Kind cluster created successfully
+@abezr ➜ /workspaces/mastering-k8s (main) $ ./setup.sh deploy
+[INFO] Detected environment: codespaces
+Setting up Kubernetes control plane for AMD64...
+[INFO] Setting up Kind cluster for testing...
+[INFO] Downloading Kind...
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100    97  100    97    0     0   1821      0 --:--:-- --:--:-- --:--:--  1830
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0
+100 9697k  100 9697k    0     0  46.3M      0 --:--:-- --:--:-- --:--:-- 46.3M
+[INFO] Creating Kind cluster...
+ERROR: failed to create cluster: node(s) already exist for a cluster with the name "codespaces-test-cluster"
+@abezr ➜ /workspaces/mastering-k8s (main) $ ./setup.sh test
+[INFO] Detected environment: codespaces
+Setting up Kubernetes control plane for AMD64...
+[INFO] Testing controller deployment...
+[SUCCESS] Controller pod is running
+[WARNING] CRDs not found
+[INFO] Deployment status:
+@abezr ➜ /workspaces/mastering-k8s (main) $ 

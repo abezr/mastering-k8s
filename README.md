@@ -76,7 +76,7 @@ sudo cp /tmp/ca.crt /var/lib/kubelet/pki/ca.crt
 ```
 
 ## 6. Configure kubectl
-```bash
+``bash
 sudo kubebuilder/bin/kubectl config set-credentials test-user --token=1234567890
 sudo kubebuilder/bin/kubectl config set-cluster test-env --server=https://127.0.0.1:6443 --insecure-skip-tls-verify
 sudo kubebuilder/bin/kubectl config set-context test-context --cluster=test-env --user=test-user --namespace=default 
@@ -85,7 +85,7 @@ sudo kubebuilder/bin/kubectl config use-context test-context
 
 ## 7. Configure CNI
 Create `/etc/cni/net.d/10-mynet.conf`:
-```json
+``json
 {
     "cniVersion": "0.3.1",
     "name": "mynet",
@@ -358,30 +358,49 @@ For the most reliable experience, we recommend using Kind (Kubernetes in Docker)
    ./setup.sh kind
    ```
 
-2. Navigate to the controller directory:
+2. Verify the cluster:
+   ```bash
+   ./verify-cluster.sh
+   ```
+
+3. Navigate to the controller directory:
    ```bash
    cd new-controller
    ```
 
-3. Build the controller image:
+4. Build the controller image:
    ```bash
    ./build-local.sh
    ```
 
-4. Deploy the controller:
+5. Deploy the controller:
    ```bash
    ./deploy.sh deploy
    ```
 
-5. Create a test resource:
+6. Create a test resource:
    ```bash
    kubectl apply -f ../test-resource.yaml
    ```
 
-6. Verify the resource is ready:
+7. Verify the resource is ready:
    ```bash
    kubectl get newresources -n newresource-system
    ```
+
+## Complete Workflow
+
+To run the complete workflow with one command:
+```bash
+cd ..  # Go back to the root directory
+./setup.sh full-test
+```
+
+This will:
+1. Verify the Codespaces environment
+2. Create a Kind cluster
+3. Build and deploy the controller
+4. Test the deployment
 
 ## Alternative Approach: Local Control Plane
 
@@ -442,9 +461,15 @@ If you encounter issues:
    ./check-status.sh
    ```
 
+6. For Kind cluster issues, verify the cluster:
+   ```bash
+   ./verify-cluster.sh
+   ```
+
 ## Components
 
 - `setup.sh` - Main setup script for the environment
 - `check-status.sh` - Script to check the status of Kubernetes components
+- `verify-cluster.sh` - Script to verify Kind cluster setup
 - `test-resource.yaml` - Sample custom resource for testing
 - `new-controller/` - Directory containing the controller implementation
